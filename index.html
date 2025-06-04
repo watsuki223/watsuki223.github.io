@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <title>ホームページ</title>
     <style>
-      /* ベースのレイアウト設定 */
       body {
         margin: 0;
         padding: 0;
@@ -75,6 +74,56 @@
         font-size: 2em;
         margin-bottom: 24px;
       }
+
+      /* おみくじ用スタイル */
+      .omikuji-container {
+        margin-top: 32px;
+        text-align: center;
+      }
+
+      #omikuji-result {
+        font-size: 2em;
+        margin-top: 20px;
+        opacity: 0;
+        transition: opacity 0.8s ease, transform 0.8s ease;
+        transform: translateY(20px);
+      }
+
+      #omikuji-result.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #omikuji-comment {
+        font-size: 1.2em;
+        margin-top: 12px;
+        color: #666;
+        opacity: 0;
+        transition: opacity 0.8s ease 0.3s;
+      }
+
+      #omikuji-comment.show {
+        opacity: 1;
+      }
+
+      #draw-button {
+        font-size: 1.2em;
+        padding: 10px 20px;
+        background-color: #ffcc00;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #draw-button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      #draw-button:hover:enabled {
+        background-color: #ffaa00;
+      }
     </style>
   </head>
   <body>
@@ -95,11 +144,99 @@
           抹茶が好きなフロントエンドエンジニアです。（大嘘）
         </div>
       </div>
+
+      <!-- おみくじ追加部分 -->
+      <div class="omikuji-container">
+        <button id="draw-button">おみくじを引く！</button>
+        <div id="omikuji-result"></div>
+        <div id="omikuji-comment"></div>
+      </div>
     </div>
 
     <script>
-      // JavaScriptで色を変更
+      // 挨拶の色変更
       document.getElementById("greeting").style.color = "red";
+
+      const drawButton = document.getElementById("draw-button");
+      const resultEl = document.getElementById("omikuji-result");
+      const commentEl = document.getElementById("omikuji-comment");
+
+      const results = [
+        { name: "大吉", rate: 5, comment: "最高の1日になる予感！" },
+        { name: "中吉", rate: 25, comment: "良いことありそう！" },
+        { name: "吉", rate: 25, comment: "まぁまぁ良い感じ。" },
+        { name: "小吉", rate: 20, comment: "ちょっとだけラッキー。" },
+        { name: "末吉", rate: 20, comment: "焦らず進もう。" },
+        { name: "凶", rate: 5, comment: "今日はおとなしく…" },
+      ];
+
+      // JST（日本時間）での基準日を取得（AM5:00で切り替わる）
+      function getJSTDateKey() {
+        const now = new Date();
+        // JSTはUTC+9時間
+        const jstOffset = 9 * 60 * 60 * 1000;
+        const jst = new Date(now.getTime() + jstOffset);
+        const hour = jst.getUTCHours();
+        // JST時間が午前5時未満なら、前日扱い
+        if (hour < 5) {
+          jst.setUTCDate(jst.getUTCDate() - 1);
+        }
+        return jst.toISOString().slice(0, 10); // YYYY-MM-DD
+      }
+
+      function hasDrawnToday() {
+        const todayKey = getJSTDateKey();
+        return localStorage.getItem("omikuji-drawn-date") === todayKey;
+      }
+
+      function saveDrawDate() {
+        localStorage.setItem("omikuji-drawn-date", getJSTDateKey());
+      }
+
+      function disableDraw(reason) {
+        drawButton.disabled = true;
+        resultEl.textContent = "今日はもう引きました";
+        commentEl.textContent = "また明日引いてみよう！";
+        resultEl.classList.add("show");
+        commentEl.classList.add("show");
+      }
+
+      function drawOmikuji() {
+        if (hasDrawnToday()) {
+          disableDraw();
+          return;
+        }
+
+        const rand = Math.random() * 100;
+        let sum = 0;
+        let result;
+        for (const r of results) {
+          sum += r.rate;
+          if (rand < sum) {
+            result = r;
+            break;
+          }
+        }
+
+        resultEl.textContent = result.name;
+        commentEl.textContent = result.comment;
+        resultEl.classList.remove("show");
+        commentEl.classList.remove("show");
+        void resultEl.offsetWidth;
+        resultEl.classList.add("show");
+        commentEl.classList.add("show");
+
+        // 保存とボタン無効化
+        saveDrawDate();
+        drawButton.disabled = true;
+      }
+
+      drawButton.addEventListener("click", drawOmikuji);
+
+      // 初期チェック（再読込時など）
+      if (hasDrawnToday()) {
+        disableDraw();
+      }
     </script>
   </body>
 </html>
